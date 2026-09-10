@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+  MANAGER
+  CREDIT
+}
+
+enum LeadStatus {
+  NEW
+  IN_PROGRESS
+  CALLBACK
+  NO_ANSWER
+  REFUSED
+  VISIT
+  VISIT_DONE
+  IN_WORK
+  SOLD
+  LOST
+}
+
+enum CreditStatus {
+  NEW
+  IN_PROGRESS
+  SENT_TO_BANK
+  REVIEW
+  APPROVED
+  BANK_REFUSED
+  CLIENT_REFUSED
+  COMPLETED
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         Role
+  dealershipId Int?
+  departmentId Int?
+  dealership   Dealership?  @relation(fields: [dealershipId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  leads        Lead[]       @relation("LeadAssignee")
+  createdAt    DateTime     @default(now())
+}
+
+model Dealership {
+  id         Int          @id @default(autoincrement())
+  name       String
+  address    String?
+  phone      String?
+  users      User[]
+  departments Department[]
+  leads      Lead[]
+  visits     Visit[]
+  createdAt  DateTime @default(now())
+}
+
+model Department {
+  id           Int @id @default(autoincrement())
+  name         String
+  dealershipId Int
+  dealership   Dealership @relation(fields: [dealershipId], references: [id])
+  users        User[]
+  leads        Lead[]
+  visits       Visit[]
+}
+
+model Client {
+  id          Int @id @default(autoincrement())
+  firstName   String
+  lastName    String?
+  phone       String @unique
+  email       String?
+  comment     String?
+  leads       Lead[]
+  credits     CreditApplication[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Lead {
+  id            Int        @id @default(autoincrement())
+  clientId      Int
+  client        Client     @relation(fields: [clientId], references: [id])
+  status        LeadStatus @default(NEW)
+  source        String?
+  carMake       String?
+  carModel      String?
+  carYear       Int?
+  carPrice      Float?
+  adUrl         String?
+  comment       String?
+  dealershipId  Int?
+  dealership    Dealership? @relation(fields: [dealershipId], references: [id])
+  departmentId  Int?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  assigneeId    Int?
+  assignee      User?      @relation("LeadAssignee", fields: [assigneeId], references: [id])
+  visit         Visit?
+  credits       CreditApplication[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Visit {
+  id           Int @id @default(autoincrement())
+  leadId       Int @unique
+  lead         Lead @relation(fields: [leadId], references: [id])
+  dealershipId Int
+  dealership   Dealership @relation(fields: [dealershipId], references: [id])
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  visitAt      DateTime
+  status       String @default("EXPECTED")
+  comment      String?
+  createdAt    DateTime @default(now())
+}
+
+model CreditApplication {
+  id          Int @id @default(autoincrement())
+  clientId    Int
+  client      Client @relation(fields: [clientId], references: [id])
+  leadId      Int?
+  lead        Lead? @relation(fields: [leadId], references: [id])
+  bank        String?
+  amount      Float?
+  downPayment Float?
+  termMonths  Int?
+  status      CreditStatus @default(NEW)
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
